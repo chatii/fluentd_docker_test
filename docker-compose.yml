@@ -1,0 +1,48 @@
+version: '3.8'
+
+x-logging:
+  &default-logging
+  driver: "fluentd"
+  options:
+    fluentd-address: fluentd:24224
+    fluentd-async-connect: "true"
+    tag: "log.{{.Name}}"
+
+services:
+  fluentd:
+    image: fluent/fluentd:v1.11-1
+    ports:
+      - "127.20.9.14:24224:24224"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.9.1
+    environment:
+      - "discovery.type=single-node"
+    expose:
+      - "9200"
+    ports:
+      - "127.20.9.14:9200:9200"
+    depends_on:
+      - fluentd
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana-oss:7.9.1
+    links:
+      - "elasticsearch"
+    ports:
+      - "127.20.9.14:5601:5601"
+    depends_on:
+      - fluentd
+
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./.Docker/php-fpm/php.ini:/usr/local/etc/php/php.ini
+      - ./:/var/www:cached
+    expose:
+      - "9000"
+    ports:
+      - "127.20.9.14:80:80"
+    logging: *default-logging
+    depends_on:
+      - fluentd
